@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
 const SUITS = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
-const BACKEND_HTTP = 'http://127.0.0.1:8000'
-const BACKEND_WS = 'ws://127.0.0.1:8000'
+const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || 'http://127.0.0.1:8000'
+const BACKEND_WS = import.meta.env.VITE_BACKEND_WS || 'ws://127.0.0.1:8000'
 
 function App() {
   const [screen, setScreen] = useState('landing') // 'landing' | 'game'
