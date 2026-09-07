@@ -14,7 +14,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://card-game-app-gamma.vercel.app/",  # ← paste your actual Vercel URL here
+        "https://card-game-app-gamma.vercel.app",  # ← paste your actual Vercel URL here
     ],
     allow_methods=["*"],
     allow_headers=["*"],
