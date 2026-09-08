@@ -106,7 +106,7 @@ function App() {
                 type="text"
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="e.g. Aditya"
+                placeholder="e.g. name"
               />
             </div>
             <button className="btn-primary" onClick={handleCreateRoom}>
