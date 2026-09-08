@@ -2,11 +2,28 @@ import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
 const SUITS = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
+const SUIT_SYMBOLS = { Hearts: '♥', Diamonds: '♦', Clubs: '♣', Spades: '♠' }
+const RED_SUITS = ['Hearts', 'Diamonds']
 const BACKEND_HTTP = import.meta.env.VITE_BACKEND_HTTP || 'http://127.0.0.1:8000'
 const BACKEND_WS = import.meta.env.VITE_BACKEND_WS || 'ws://127.0.0.1:8000'
 
+// A single playing card, drawn with CSS — no image files needed
+function PlayingCard({ card }) {
+  const isRed = RED_SUITS.includes(card.suit)
+  return (
+    <div className={`card ${isRed ? '' : ''}`}>
+      <span className="rank" style={{ color: isRed ? 'var(--red)' : 'var(--ink)' }}>
+        {card.rank}
+      </span>
+      <span className={`suit ${isRed ? 'suit-red' : 'suit-black'}`}>
+        {SUIT_SYMBOLS[card.suit]}
+      </span>
+    </div>
+  )
+}
+
 function App() {
-  const [screen, setScreen] = useState('landing') // 'landing' | 'game'
+  const [screen, setScreen] = useState('landing')
   const [playerName, setPlayerName] = useState('')
   const [joinCodeInput, setJoinCodeInput] = useState('')
   const [roomCode, setRoomCode] = useState(null)
@@ -20,15 +37,10 @@ function App() {
     const ws = new WebSocket(`${BACKEND_WS}/ws/${code}/${playerName}`)
     wsRef.current = ws
 
-    ws.onopen = () => {
-      console.log(`Connected to room ${code}`)
-      setConnected(true)
-    }
+    ws.onopen = () => setConnected(true)
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      console.log('Received:', data)
-
       if (data.type === 'role_assigned') {
         setMyRole(data.role)
       } else if (data.type === 'error') {
@@ -40,7 +52,6 @@ function App() {
     }
 
     ws.onclose = (event) => {
-      console.log('Disconnected. Close code:', event.code)
       setConnected(false)
       if (event.code === 4404) setErrorMessage('Room not found')
       if (event.code === 4403) setErrorMessage('Room is full')
@@ -75,41 +86,45 @@ function App() {
   }, [])
 
   const handleChooseTrump = (suit) => {
-    wsRef.current.send(JSON.stringify({ type: 'choose_trump', suit: suit }))
+    wsRef.current.send(JSON.stringify({ type: 'choose_trump', suit }))
   }
 
   const handlePlayCard = (card) => {
-    wsRef.current.send(JSON.stringify({ type: 'play_card', card: card }))
+    wsRef.current.send(JSON.stringify({ type: 'play_card', card }))
   }
 
   if (screen === 'landing') {
     return (
       <div className="App">
-        <h1>3-2-5 Card Game</h1>
-
-        {errorMessage && <p style={{ color: 'red' }}>⚠️ {errorMessage}</p>}
-
-        <div>
-          <label>Your name: </label>
-          <input
-            type="text"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-          />
-        </div>
-
-        <div style={{ marginTop: '1rem' }}>
-          <button onClick={handleCreateRoom}>Create Room</button>
-        </div>
-
-        <div style={{ marginTop: '1rem' }}>
-          <input
-            type="text"
-            placeholder="Room code"
-            value={joinCodeInput}
-            onChange={(e) => setJoinCodeInput(e.target.value)}
-          />
-          <button onClick={handleJoinRoom}>Join Room</button>
+        <div className="landing">
+          <h1>3-2-5</h1>
+          {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
+          <div className="landing-panel">
+            <div className="field">
+              <label>Your name</label>
+              <input
+                type="text"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="e.g. Aditya"
+              />
+            </div>
+            <button className="btn-primary" onClick={handleCreateRoom}>
+              Create Room
+            </button>
+            <div className="divider">or join with a code</div>
+            <div className="join-row">
+              <input
+                type="text"
+                placeholder="ROOM CODE"
+                value={joinCodeInput}
+                onChange={(e) => setJoinCodeInput(e.target.value)}
+              />
+              <button className="btn-secondary" onClick={handleJoinRoom}>
+                Join
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -119,61 +134,109 @@ function App() {
 
   return (
     <div className="App">
-      <h1>3-2-5 Card Game</h1>
-      <p>Room code: <strong>{roomCode}</strong> (share this with friends)</p>
-      <p>Playing as: <strong>{myRole || 'assigning...'}</strong> ({playerName})</p>
-      <p>Backend connection: {connected ? '✅ Connected' : '❌ Not connected'}</p>
+      <div className="top-bar">
+        <span className="room-code-pill">{roomCode}</span>
+        <span className="status-line">
+          Trump: <strong>{gameState?.trump_suit || '—'}</strong>
+          {'  ·  '}
+          Phase: <strong>{gameState?.phase}</strong>
+        </span>
+      </div>
 
-      {errorMessage && <p style={{ color: 'red' }}>⚠️ {errorMessage}</p>}
+      {errorMessage && <div className="error-banner">⚠️ {errorMessage}</div>}
 
       {gameState && myRole && (
-        <div>
-          <p>Phase: {gameState.phase}</p>
-          <p>Trump suit: {gameState.trump_suit || 'not chosen yet'}</p>
-
-          <h3>Players in room:</h3>
-          <ul>
-            {Object.entries(gameState.players || {}).map(([role, name]) => (
-              <li key={role}>{role}: {name}</li>
+        <>
+          <div className="players-row">
+            {Object.keys(gameState.quotas || {}).map((role) => (
+              <div
+                key={role}
+                className={`player-badge ${gameState.whose_turn === role ? 'active-turn' : ''}`}
+              >
+                <div className="role">{role.replace('_', ' ')}</div>
+                <div className="name">{gameState.players?.[role] || '...'}</div>
+                <div className="quota">
+                  {gameState.quotas[role]} of {gameState.tricks_won[role]}
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
 
           {gameState.phase === 'playing' && (
-            <p>{isMyTurn ? "👉 It's YOUR turn" : `Waiting for ${gameState.whose_turn}...`}</p>
-          )}
-
-          {gameState.phase === 'choosing_trump' && myRole === 'trump_chooser' && (
-            <div>
-              <h3>Choose trump:</h3>
-              {SUITS.map((suit) => (
-                <button key={suit} onClick={() => handleChooseTrump(suit)}>{suit}</button>
-              ))}
+            <div className="turn-banner">
+              {isMyTurn ? "👉 It's your turn" : `Waiting for ${gameState.players?.[gameState.whose_turn]}...`}
             </div>
           )}
 
-          <h3>Current trick:</h3>
-          <ul>
-            {gameState.current_trick?.map((card, index) => (
-              <li key={index}>{card.rank} of {card.suit}</li>
-            ))}
-          </ul>
+          {gameState.phase === 'choosing_trump' && myRole === 'trump_chooser' && (
+            <div className="trump-select">
+              <h3>Choose trump</h3>
+              <div className="suit-buttons">
+                {SUITS.map((suit) => (
+                  <button
+                    key={suit}
+                    className={`suit-btn ${RED_SUITS.includes(suit) ? 'suit-red' : 'suit-black'}`}
+                    onClick={() => handleChooseTrump(suit)}
+                  >
+                    {SUIT_SYMBOLS[suit]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-          <h3>Your hand ({myRole}):</h3>
-          <ul>
-            {gameState.hands?.[myRole]?.map((card, index) => (
-              <li key={index}>
-                {gameState.phase === 'playing' && isMyTurn ? (
-                  <button onClick={() => handlePlayCard(card)}>{card.rank} of {card.suit}</button>
+          <div className="table-area">
+            {gameState.current_trick?.length > 0 ? (
+              gameState.current_trick.map((card, i) => <PlayingCard key={i} card={card} />)
+            ) : (
+              <span className="empty-hint">No cards played yet this trick</span>
+            )}
+          </div>
+
+          <div className="hand-section">
+            <h3>Your hand</h3>
+            <div className="hand-row">
+              {gameState.hands?.[myRole]?.map((card, i) => {
+                const clickable = gameState.phase === 'playing' && isMyTurn
+                return clickable ? (
+                  <button key={i} className="card-btn" onClick={() => handlePlayCard(card)}>
+                    <PlayingCard card={card} />
+                  </button>
                 ) : (
-                  <span>{card.rank} of {card.suit}</span>
-                )}
-              </li>
-            ))}
-          </ul>
+                  <div key={i} className="card disabled" style={{ display: 'contents' }}>
+                    <PlayingCard card={card} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
 
-          <h3>Tricks won:</h3>
-          <p>Dealer: {gameState.tricks_won?.dealer} | Trump chooser: {gameState.tricks_won?.trump_chooser} | Third player: {gameState.tricks_won?.third_player}</p>
-        </div>
+          {gameState.phase === 'hand_complete' && (
+            <div className="results-panel">
+              <h2>Hand Complete</h2>
+              <table className="results-table">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Needed</th>
+                    <th>Made</th>
+                    <th>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.keys(gameState.quotas || {}).map((role) => (
+                    <tr key={role}>
+                      <td>{gameState.players?.[role]}</td>
+                      <td>{gameState.quotas[role]}</td>
+                      <td>{gameState.tricks_won[role]}</td>
+                      <td>{gameState.quota_results?.[role] ? '✅' : '❌'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

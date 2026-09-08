@@ -1,184 +1,428 @@
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
-
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
+:root {
+  --felt: #0F3D2E;
+  --felt-dark: #0A2E22;
+  --card-face: #F5EFE0;
+  --gold: #D4A24E;
+  --gold-dim: #9C7A3A;
+  --red: #B33A3A;
+  --ink: #1F2A24;
+  --text-light: #EDE6D6;
+  --text-muted: #A9BDB1;
 }
 
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
+* {
+  box-sizing: border-box;
 }
 
-#center {
+body {
+  margin: 0;
+  background: var(--felt);
+  background-image: radial-gradient(circle at 50% 0%, var(--felt) 0%, var(--felt-dark) 100%);
+  color: var(--text-light);
+  font-family: 'Manrope', sans-serif;
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  margin: 0;
+}
+
+button {
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+}
+
+.App {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+/* ---------- Landing screen ---------- */
+
+.landing {
+  min-height: 90vh;
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1.75rem;
 }
 
-#next-steps {
-  display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
+.landing h1 {
+  font-size: 2.5rem;
+  color: var(--card-face);
 }
 
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
-}
-
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
-
-.ticks {
-  position: relative;
+.landing-panel {
+  background: var(--card-face);
+  color: var(--ink);
+  border-radius: 16px;
+  padding: 2rem;
   width: 100%;
+  max-width: 340px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
+.field {
+  text-align: left;
+  margin-bottom: 1.25rem;
+}
 
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
+.field label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: var(--ink);
+}
+
+.field input {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1.5px solid #d8cfb8;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: 'Manrope', sans-serif;
+  background: white;
+}
+
+.field input:focus {
+  outline: 2px solid var(--gold);
+  border-color: var(--gold);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 0.8rem;
+  background: var(--felt);
+  color: var(--card-face);
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: var(--felt-dark);
+  transform: translateY(-1px);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+  color: #a89b7c;
+  font-size: 0.8rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2d9c2;
+}
+
+.join-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.join-row input {
+  flex: 1;
+  padding: 0.65rem 0.75rem;
+  border: 1.5px solid #d8cfb8;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.btn-secondary {
+  padding: 0.65rem 1rem;
+  background: transparent;
+  color: var(--felt);
+  border: 1.5px solid var(--felt);
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background: var(--felt);
+  color: var(--card-face);
+}
+
+/* ---------- Error banner ---------- */
+
+.error-banner {
+  background: #4a1f1f;
+  border: 1px solid var(--red);
+  color: #f3d0d0;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* ---------- Game screen ---------- */
+
+.top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(212, 162, 78, 0.25);
+  margin-bottom: 1.5rem;
+}
+
+.room-code-pill {
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+
+.status-line {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.status-line strong {
+  color: var(--text-light);
+}
+
+/* ---------- Players row ---------- */
+
+.players-row {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.player-badge {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(212, 162, 78, 0.3);
+  border-radius: 12px;
+  padding: 0.6rem 0.9rem;
+  min-width: 130px;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.player-badge.active-turn {
+  border-color: var(--gold);
+  background: rgba(212, 162, 78, 0.15);
+}
+
+.player-badge .name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.player-badge .role {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  margin-bottom: 0.3rem;
+}
+
+.player-badge .quota {
+  font-size: 0.85rem;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* ---------- Trump selection ---------- */
+
+.trump-select {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.trump-select h3 {
+  color: var(--card-face);
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.suit-buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.suit-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  background: var(--card-face);
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.suit-btn:hover {
+  transform: scale(1.08);
+}
+
+.suit-red { color: var(--red); }
+.suit-black { color: var(--ink); }
+
+/* ---------- Table / trick area ---------- */
+
+.table-area {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(212, 162, 78, 0.2);
+  border-radius: 20px;
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+}
+
+.table-area .empty-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* ---------- Turn banner ---------- */
+
+.turn-banner {
+  text-align: center;
+  font-weight: 700;
+  padding: 0.6rem;
+  border-radius: 10px;
+  margin-bottom: 1.25rem;
+  background: rgba(212, 162, 78, 0.12);
+  color: var(--gold);
+}
+
+/* ---------- Card component ---------- */
+
+.card {
+  width: 64px;
+  height: 92px;
+  background: var(--card-face);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6px 7px;
+  font-weight: 700;
+  animation: dealIn 0.35s ease-out;
+  flex-shrink: 0;
+}
+
+.card .rank {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.card .suit {
+  font-size: 1.4rem;
+  align-self: center;
+}
+
+@keyframes dealIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
   }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+/* ---------- Hand ---------- */
+
+.hand-section h3 {
+  color: var(--card-face);
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.hand-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.card-btn {
+  border: none;
+  padding: 0;
+  background: none;
+  transition: transform 0.15s ease;
+}
+
+.card-btn .card {
+  cursor: pointer;
+}
+
+.card-btn:hover .card {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 16px rgba(0, 0, 0, 0.4);
+}
+
+.card.disabled {
+  opacity: 0.55;
+}
+
+/* ---------- Hand-complete results ---------- */
+
+.results-panel {
+  background: var(--card-face);
+  color: var(--ink);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.results-panel h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.results-table th,
+.results-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  border-bottom: 1px solid #e2d9c2;
+}
+
+.results-table th {
+  color: var(--gold-dim);
+  font-weight: 700;
+  font-size: 0.8rem;
 }

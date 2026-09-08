@@ -4,6 +4,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from game.state import GameState
 from game.deck import Card
+from game.rules_325 import is_valid_move, QUOTAS
 
 app = FastAPI()
 
@@ -59,7 +60,7 @@ def card_to_dict(card: Card) -> dict:
 
 def build_state_message(room: Room) -> dict:
     game = room.game
-    return {
+    message = {
         "type": "state_update",
         "phase": game.phase,
         "trump_suit": game.trump_suit,
@@ -70,9 +71,15 @@ def build_state_message(room: Room) -> dict:
         "current_trick": [card_to_dict(c) for c in game.current_trick],
         "current_leader": game.current_leader,
         "tricks_won": game.tricks_won,
+        "quotas": QUOTAS,  # NEW: always send quotas, not just at the end
         "whose_turn": game.whose_turn() if game.phase == "playing" else None,
-        "players": room.player_names,  # e.g. {"dealer": "Aditya", "trump_chooser": "Rahul"}
+        "players": room.player_names,
     }
+
+    if game.phase == "hand_complete":
+        message["quota_results"] = game.quota_results()
+
+    return message
 
 
 async def broadcast_state(room: Room):
