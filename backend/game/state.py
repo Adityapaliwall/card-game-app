@@ -54,13 +54,20 @@ class GameState:
         return PLAY_ORDER[start_index:] + PLAY_ORDER[:start_index]
 
     def whose_turn(self) -> str:
-        """Returns the name of the player who needs to play next."""
+        """Returns the name of the player who needs to play next, or None
+        if the current trick is full and waiting to be resolved."""
         order = self._turn_order_for_trick()
+        if len(self.current_trick) >= len(order):
+            return None
         return order[len(self.current_trick)]
 
     def play_card(self, player: str, card: Card):
         """Attempts to play a card for the given player.
         Raises an error if it's not their turn or the move is illegal.
+        NOTE: this no longer auto-resolves the trick when it's full —
+        call resolve_current_trick() separately once you're ready to
+        (this lets the caller pause first, so all 3 cards are visible
+        before the trick clears).
         """
         if self.phase != "playing":
             raise ValueError("Can't play a card right now — game isn't in the playing phase.")
@@ -73,29 +80,25 @@ class GameState:
         if not is_valid_move(hand, card, self.current_trick):
             raise ValueError(f"{card} is not a legal move for {player} right now.")
 
-        # Play the card: remove from hand, add to the trick
         hand.remove(card)
         self.current_trick.append(card)
         self.current_trick_players.append(player)
 
-        # If all 3 players have played, resolve the trick
-        if len(self.current_trick) == 3:
-            self._finish_trick()
+    def is_trick_full(self) -> bool:
+        """True once all 3 players have played a card this trick."""
+        return len(self.current_trick) == 3
 
-    def _finish_trick(self):
-        """Called automatically once 3 cards have been played.
-        Figures out the winner, updates their trick count, and resets
-        for the next trick.
-        """
+    def resolve_current_trick(self):
+        """Scores the completed trick, sets the winner as next leader,
+        and resets for the next trick. Call this only after is_trick_full()
+        is True."""
         winner = resolve_trick(self.current_trick, self.trump_suit, self.current_trick_players)
         self.tricks_won[winner] += 1
 
-        # Winner leads the next trick
         self.current_leader = winner
         self.current_trick = []
         self.current_trick_players = []
 
-        # If everyone's hand is empty, the whole 10-trick hand is over
         if all(len(h) == 0 for h in self.hands.values()):
             self.phase = "hand_complete"
 

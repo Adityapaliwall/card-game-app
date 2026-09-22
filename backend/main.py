@@ -1,5 +1,6 @@
 import random
 import string
+import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from game.state import GameState
@@ -134,7 +135,12 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
                 elif data["type"] == "play_card":
                     card = Card(data["card"]["suit"], data["card"]["rank"])
                     room.game.play_card(role, card)
-                    await broadcast_state(room)
+                    await broadcast_state(room)  # shows the 3rd card on the table immediately
+                
+                    if room.game.is_trick_full():
+                        await asyncio.sleep(1.5)  # pause so everyone can see all 3 cards
+                        room.game.resolve_current_trick()
+                        await broadcast_state(room)  # now clear the trick, move to next
 
             except ValueError as e:
                 await websocket.send_json({"type": "error", "message": str(e)})

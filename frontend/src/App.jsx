@@ -163,9 +163,13 @@ function App() {
           </div>
 
           {gameState.phase === 'playing' && (
-            <div className="turn-banner">
-              {isMyTurn ? "👉 It's your turn" : `Waiting for ${gameState.players?.[gameState.whose_turn]}...`}
-            </div>
+              <div className="turn-banner">
+                {gameState.whose_turn === null
+                  ? '🃏 Resolving trick...'
+                  : isMyTurn
+                    ? "👉 It's your turn"
+                    : `Waiting for ${gameState.players?.[gameState.whose_turn]}...`}
+              </div>
           )}
 
           {gameState.phase === 'choosing_trump' && myRole === 'trump_chooser' && (
