@@ -6,49 +6,56 @@ from fastapi.middleware.cors import CORSMiddleware
 from game.state import GameState
 from game.deck import Card
 from game.rules_325 import is_valid_move, QUOTAS
+from game.chokri_state import ChokriGameState
+from game.chokri_rules import team_of
 
 app = FastAPI()
 
-# Allows your React frontend (running on port 5173) to talk to this
-# backend (running on port 8000) — browsers block this by default
-# unless the server explicitly allows it.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://card-game-app-gamma.vercel.app",  # ← paste your actual Vercel URL here
+        "https://card-game-app-gamma.vercel.app",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 ROLE_ORDER = ["dealer", "trump_chooser", "third_player"]
+CHOKRI_ROLE_ORDER = ["1", "2", "3", "4"]
 
 
 class Room:
-    """One game session: its own GameState, plus who's connected and
-    which role (dealer/trump_chooser/third_player) each person has."""
+    """One game session. Supports either game_type: '325' or 'chokri'."""
 
-    def __init__(self, code: str):
+    def __init__(self, code: str, game_type: str = "325"):
         self.code = code
-        self.game = GameState()
-        self.connections: dict[str, WebSocket] = {}   # role -> websocket
-        self.player_names: dict[str, str] = {}          # role -> display name
+        self.game_type = game_type
+
+        if game_type == "chokri":
+            self.role_order = CHOKRI_ROLE_ORDER
+            self.game = None  # created once the 4th player joins
+        else:
+            self.role_order = ROLE_ORDER
+            self.game = GameState()
+
+        self.connections: dict[str, WebSocket] = {}
+        self.player_names: dict[str, str] = {}
 
     def next_available_role(self):
-        """Returns the next open role, or None if all 3 seats are taken."""
-        for role in ROLE_ORDER:
+        for role in self.role_order:
             if role not in self.connections:
                 return role
         return None
+
+    def is_full(self):
+        return len(self.connections) == len(self.role_order)
 
 
 rooms: dict[str, Room] = {}
 
 
 def generate_room_code() -> str:
-    """Makes a random 4-letter code, e.g. 'QXRT', avoiding any code
-    already in use."""
     while True:
         code = "".join(random.choices(string.ascii_uppercase, k=4))
         if code not in rooms:
@@ -59,10 +66,11 @@ def card_to_dict(card: Card) -> dict:
     return {"suit": card.suit, "rank": card.rank}
 
 
-def build_state_message(room: Room) -> dict:
+def build_state_message_325(room: Room) -> dict:
     game = room.game
     message = {
         "type": "state_update",
+        "game_type": "325",
         "phase": game.phase,
         "trump_suit": game.trump_suit,
         "hands": {
@@ -72,15 +80,62 @@ def build_state_message(room: Room) -> dict:
         "current_trick": [card_to_dict(c) for c in game.current_trick],
         "current_leader": game.current_leader,
         "tricks_won": game.tricks_won,
-        "quotas": QUOTAS,  # NEW: always send quotas, not just at the end
+        "quotas": QUOTAS,
+        "whose_turn": game.whose_turn() if game.phase == "playing" else None,
+        "players": room.player_names,
+    }
+    if game.phase == "hand_complete":
+        message["quota_results"] = game.quota_results()
+    return message
+
+
+def build_state_message_chokri(room: Room) -> dict:
+    game = room.game
+
+    if game is None:
+        # Not all 4 players have joined yet
+        return {
+            "type": "state_update",
+            "game_type": "chokri",
+            "phase": "waiting_for_players",
+            "players": room.player_names,
+            "seats_filled": len(room.connections),
+        }
+
+    message = {
+        "type": "state_update",
+        "game_type": "chokri",
+        "phase": game.phase,
+        "dealer": game.dealer,
+        "trump_suit": game.trump_suit,
+        "hands": {
+            seat: [card_to_dict(c) for c in cards]
+            for seat, cards in game.hands.items()
+        },
+        "current_trick": [card_to_dict(c) for c in game.current_trick],
+        "current_leader": game.current_leader,
+        "tricks_won": game.tricks_won,
+        "team_scores": game.team_scores,
+        "current_bid": game.current_bid,
+        "highest_bidder": game.highest_bidder,
+        "whose_bid_turn": game.whose_bid_turn() if game.phase == "bidding" else None,
         "whose_turn": game.whose_turn() if game.phase == "playing" else None,
         "players": room.player_names,
     }
 
-    if game.phase == "hand_complete":
-        message["quota_results"] = game.quota_results()
+    if game.phase in ("hand_complete", "game_over"):
+        message["last_round_result"] = getattr(game, "last_round_result", None)
+
+    if game.phase == "game_over":
+        message["losing_team"] = game.losing_team
 
     return message
+
+
+def build_state_message(room: Room) -> dict:
+    if room.game_type == "chokri":
+        return build_state_message_chokri(room)
+    return build_state_message_325(room)
 
 
 async def broadcast_state(room: Room):
@@ -90,12 +145,10 @@ async def broadcast_state(room: Room):
 
 
 @app.post("/create_room")
-def create_room():
-    """A normal (non-WebSocket) endpoint. Makes a new empty room and
-    returns its code so the frontend can share it with friends."""
+def create_room(game_type: str = "325"):
     code = generate_room_code()
-    rooms[code] = Room(code)
-    return {"room_code": code}
+    rooms[code] = Room(code, game_type)
+    return {"room_code": code, "game_type": game_type}
 
 
 @app.websocket("/ws/{room_code}/{player_name}")
@@ -103,14 +156,14 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
     room_code = room_code.upper()
 
     if room_code not in rooms:
-        await websocket.close(code=4404)  # custom code we invented: "room not found"
+        await websocket.close(code=4404)
         return
 
     room = rooms[room_code]
     role = room.next_available_role()
 
     if role is None:
-        await websocket.close(code=4403)  # custom code we invented: "room full"
+        await websocket.close(code=4403)
         return
 
     await websocket.accept()
@@ -118,8 +171,12 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
     room.player_names[role] = player_name
     print(f"{player_name} joined room {room_code} as {role}")
 
-    # Tell this player which role they were assigned
     await websocket.send_json({"type": "role_assigned", "role": role})
+
+    # For Chokri: once the 4th player joins, actually start the game
+    if room.game_type == "chokri" and room.game is None and room.is_full():
+        room.game = ChokriGameState(dealer="1")
+        print(f"Chokri game started in room {room_code}")
 
     await broadcast_state(room)
 
@@ -128,19 +185,10 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
             data = await websocket.receive_json()
 
             try:
-                if data["type"] == "choose_trump":
-                    room.game.choose_trump(data["suit"])
-                    await broadcast_state(room)
-
-                elif data["type"] == "play_card":
-                    card = Card(data["card"]["suit"], data["card"]["rank"])
-                    room.game.play_card(role, card)
-                    await broadcast_state(room)  # shows the 3rd card on the table immediately
-                
-                    if room.game.is_trick_full():
-                        await asyncio.sleep(1.5)  # pause so everyone can see all 3 cards
-                        room.game.resolve_current_trick()
-                        await broadcast_state(room)  # now clear the trick, move to next
+                if room.game_type == "chokri":
+                    await handle_chokri_action(room, role, data)
+                else:
+                    await handle_325_action(room, role, data)
 
             except ValueError as e:
                 await websocket.send_json({"type": "error", "message": str(e)})
@@ -149,3 +197,50 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_name: 
         print(f"{player_name} disconnected from room {room_code}")
         del room.connections[role]
         del room.player_names[role]
+
+
+async def handle_325_action(room: Room, role: str, data: dict):
+    if data["type"] == "choose_trump":
+        room.game.choose_trump(data["suit"])
+        await broadcast_state(room)
+
+    elif data["type"] == "play_card":
+        card = Card(data["card"]["suit"], data["card"]["rank"])
+        room.game.play_card(role, card)
+        await broadcast_state(room)
+
+        if room.game.is_trick_full():
+            await asyncio.sleep(1.5)
+            room.game.resolve_current_trick()
+            await broadcast_state(room)
+
+
+async def handle_chokri_action(room: Room, role: str, data: dict):
+    game = room.game
+    if game is None:
+        raise ValueError("Game hasn't started yet — waiting for all 4 players.")
+
+    if data["type"] == "submit_bid":
+        if data.get("pass_turn"):
+            game.submit_bid(role, pass_turn=True)
+        else:
+            game.submit_bid(role, bid=data["bid"])
+        await broadcast_state(room)
+
+    elif data["type"] == "choose_trump":
+        game.choose_trump(role, data["suit"])
+        await broadcast_state(room)
+
+    elif data["type"] == "play_card":
+        card = Card(data["card"]["suit"], data["card"]["rank"])
+        game.play_card(role, card)
+        await broadcast_state(room)
+
+        if game.is_trick_full():
+            await asyncio.sleep(1.5)
+            game.resolve_current_trick()
+            await broadcast_state(room)
+
+    elif data["type"] == "start_next_hand":
+        game.start_next_hand()
+        await broadcast_state(room)

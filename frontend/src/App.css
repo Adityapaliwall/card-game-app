@@ -88,6 +88,7 @@ button {
   font-size: 1rem;
   font-family: 'Manrope', sans-serif;
   background: white;
+  color: var(--ink);   /* ← makes typed text visible */
 }
 
 .field input:focus {
@@ -136,11 +137,13 @@ button {
 
 .join-row input {
   flex: 1;
+  min-width: 0;   /*  lets it actually shrink so the button fits */
   padding: 0.65rem 0.75rem;
   border: 1.5px solid #d8cfb8;
   border-radius: 8px;
   font-size: 1rem;
   text-transform: uppercase;
+  color: var(--ink);   /* same fix as above */
 }
 
 .btn-secondary {
